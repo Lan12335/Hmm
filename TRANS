@@ -1,4 +1,4 @@
-//Transmitter, arduino UNO
+//Transmitter, arduino UNO with debugging Serial.print
 
 #include <nRF24L01.h>
 #include <SPI.h>
@@ -7,65 +7,78 @@
 #include <Time.h>
 #include <DS1307RTC.h>
 
-/*
-scl A4
-sda A3
-*/
-
+//All for nRF24L01
 RF24 radio(8,7);
-const byte Address[6] = "00009";
+byte Address[] [6] = {"1Node","2Node}";
 
+//All for force sensors
 int F1; int F2; int F3;
+const byte Ff1 = A0; const byte Ff2 = A1; const byte Ff3 = A2;
 
+//All for Pseudo randomness
 int RandomNn1; int RandomNn2; int RandomNn3;
 
+//For Servo and RTC transmitting 
 byte pos1=90; byte pos2=90; byte pos3=90;
-int 3POS[6];
+int 3POS[6];  //we used an array to send the data
+unsigned char data;
+
+/* scl A4
+sda A3 */
 
 //ValN[] = {Else if, if, Ran1,Ran2,...}
 int ValX[6] = {99-15+40,59-19+7,36-87+80,80-69+3,93-15+13};
 int ValY[6] = {52-38+18,38-29+2,97-3+72,39-21+30,33-68+28};
 int ValZ[6] = {78-84+81,49-38+62,80-17+47,26-60+26,25-60+76};  
 
+//irrelevant but for LED
 const byte Green = 2; 
 const byte Red = 3;
-
-const byte Ff1 = A0; const byte Ff2 = A1; const byte Ff3 = A2;
 
 void setup() {
   Serial.begin(9600);
 
+  //LED
   pinMode(Green, OUTPUT);
   pinMode(Red, OUTPUT);
   digitalWrite(Green, LOW);
   digitalWrite(Red, LOW);
-
+  
+  //nRF24L01
   radio.begin();
   radio.openWritingPipe(Address);
   radio.setPALevel(RF24_PA_MIN);
-  radio.stopListening();    
+  radio.setDataRate(RF24_2MBPS);
+  radio.setChannel(124);
+  radio.openWritingPipe(Address[1])
+  radio.openReadingPipe(1, Address[0])  
 }
 
+//method for irrelevant LED "loop"
 void start() {
    if(F1>=100||F2>=100||F3>=100) {
     digitalWrite(Green, HIGH);
     digitalWrite(Red, LOW);
+    Serial.println("Green on" +"\n");
     delay(100);    
   }
  
    else{
     digitalWrite(Green, LOW);
     digitalWrite(Red, HIGH);
+    Serial.println("Red on"+"\n");
     delay(100);
- }    
+ }     
 }
 
+//method for pseudo random "loop"
 void normal() {
    if(F1>100||F2>100||F3>100) {
     RandomNn1 = random(99)-random(15)+random(40);
     RandomNn2 = random(52)-random(38)+random(18);
     RandomNn3 = random(78)-random(84)+random(81);
-    
+    Serial.println("Sensing..."+"Triggered Normal 1"+"\n");
+
     pos1=map((map(abs(RandomNn1),0,abs(ValX[0]),0,3)*10),0,30,0,90);
     pos2=map((map(abs(RandomNn2),0,abs(ValY[0]),0,3)*10),0,30,0,90);
     pos3=map((map(abs(RandomNn3),0,abs(ValZ[0]),0,3)*10),0,30,0,90);
@@ -76,6 +89,7 @@ void normal() {
     RandomNn1 = random(59)-random(19)+random(7);
     RandomNn2 = random(38)-random(29)+random(2);
     RandomNn3 = random(49)-random(38)+random(62);
+    Serial.println("Sensing..."+"Triggered Normal 2"+"\n");
     
     pos1=map((map(abs(RandomNn1),0,abs(ValX[1]),0,3)*10),0,30,0,90);
     pos2=map((map(abs(RandomNn2),0,abs(ValY[1]),0,3)*10),0,30,0,90);
@@ -84,29 +98,58 @@ void normal() {
   }
 }
 
+//Serials
+void DebuggingF123() {
+  if(F1>100) {
+    Serial.println("F1 movement")
+  }
+
+  else{
+    Serial.print("no mvement")
+  }
+
+  if(F2>100) {
+    Serial.println("F2 movement")    
+  }
+
+  else{
+    Serial.print("no mvement")
+  }
+
+ if(F3>100) {
+    Serial.println("F3 movement")    
+  }
+
+  else{
+    Serial.print("no mvement")
+  } 
+} 
+
+//method for RTC "setup"
 void REALTIME() {
+  tmElements_t tm;
   if (RTC.read(tm)) {
-    Serial.print("Ok, Time = ");
+    Serial.println("Time: ");
     print2digits(tm.Hour);
     Serial.write(':');
     print2digits(tm.Minute);
     Serial.write(':');
     print2digits(tm.Second);
-    Serial.print(", Date (D/M/Y) = ");
+    Serial.print(",Date: ");
     Serial.print(tm.Day);
     Serial.write('/');
     Serial.print(tm.Month);
     Serial.write('/');
     Serial.print(tmYearToCalendar(tm.Year));
-    Serial.println();
+    Serial.println("\n");
 
   } else {
     if (RTC.chipPresent()) {
-      Serial.println("Please run the SetTime");
+      Serial.println("run SetTime");
       Serial.println("example to initialize the time and begin running.");
       Serial.println();
     } else {
-      Serial.println("DS1307 read error!  Please check the circuitry.");
+      Serial.println("check the circuitry.");
       Serial.println();
     }
     delay(9000);
@@ -114,6 +157,7 @@ void REALTIME() {
   delay(1000);
 }
 
+//method for RTC "loop"
 void print2digits(int number) {
   if (number >= 0 && number < 10) {
     Serial.write('0');
@@ -122,21 +166,19 @@ void print2digits(int number) {
 }
 
 void loop() { 
-  tmElements_t tm;
-
   REALTIME();
 
-  RADIOTIME();
-
   F1=analogRead(Ff1); F2=analogRead(Ff2); F3=analogRead(Ff3);
- 
+  
+  DebuggingF123();
+
   3POS[0]={print2digits(tm.Hour) + ":" + print2digits(tm.Minute) + ":" + print2digits(tm.Second)};
 
   3POS[1]={print2digits(tm.Day) + "/" + print2digits(tm.Month) + "/" + print2digits(tm.Year)};
 
-  start();
+  start();  //just LED 
   
-  normal();
+  normal();  //Pseudo randomness 
   
   if(F1>=500) {
     RandomNn1 = random(36)-random(87)+random(80);
@@ -170,21 +212,40 @@ void loop() {
     pos3=map((map(abs(RandomNn3),0,abs(ValZ[4]),0,3)*10),0,30,0,90);
     delay(100);
   }
- 
- radio.write(3POS, sizeof(3POS));
- 3POS[0];
- 3POS[1];
- 3POS[2]=pos1; 
- 3POS[3]=pos2;
- 3POS[4]=pos3;
 
+  radio.startListening();
+
+  while(!radio.available()) {
+    Serial.println("nothing received"+"\n");
+    return;
+  }
+  
+  if(radio.available()) {
+    while(radio.available()) {
+      radio.read(&data, sizeof(char)); 
+    }
+  }
+
+  if(data==1) {
+    radio.stopListening();
+    radio.write(3POS, sizeof(3POS));
+    3POS[0];
+    3POS[1];
+    3POS[2]=pos1; 
+    3POS[3]=pos2;
+    3POS[4]=pos3;
+    Serial.print("sent");
+  }
+
+ Serial.println("\n");
  Serial.print("pos1: "); Serial.print(pos1); 
  Serial.println("\n");
  Serial.print("pos2: "); Serial.print(pos2);
  Serial.println("\n");
  Serial.print("pos3: "); Serial.print(pos3);
  Serial.println("\n");
- delay(1000);
+ delay(50);
 }
+
 
 
