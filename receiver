@@ -7,14 +7,17 @@
 #include <RF24.h>
 #include <SD.h>
 
+//naming servo
 Servo SR1;
 Servo SR2;
 Servo SR3;
 int 3POS[6];
 
+//All for micro SD card function
 File myFile;
 String positions = "test.txt";
 
+//All for fingerprint function
 #if (defined(__AVR__) || defined(ESP8266)) && !defined(__AVR_ATmega2560__)
 const int chipSelect = 5;
 SoftwareSerial mySerial(7,6);
@@ -23,15 +26,18 @@ SoftwareSerial mySerial(7,6);
 #endif
 Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
 
+//All for nRF24L01 function
 RF24 radio(10,9);
-const byte Address[6] = "00009";
+const byte Address[] {6} = {"1Node", "2Node"};
+
+unsigned char data=1;
 
 void setup() {
   Serial.begin(9600);
   
   FINGER();
-
-  SR1.attach(2, 500, 2500); //servo
+  //servo
+  SR1.attach(2, 500, 2500); 
   SR2.attach(3, 500, 2500);
   SR3.attach(4, 500, 2500);
   
@@ -39,14 +45,18 @@ void setup() {
   SR1.write(90);
   SR2.write(90);
   SR3.write(90);
-  delay(100);  //servo
+  delay(100);  
 
-  radio.begin(); //radio
-  radio.openReadingPipe(1, Address);
+  //nRF24L01
+  radio.begin();
   radio.setPALevel(RF24_PA_MIN);
-  radio.startListening(); //radio
+  radio.setDataRate(RF24_2MBPS);
+  radiosetChannel(124);
+  radio.openWritingPipe(Address[0]);
+  radio.openReadingPipe(1, Address[1]);
 
-  while(!Serial){}; //SD
+  //SD
+  while(!Serial){}; 
 
   initializeCard();
 
@@ -60,6 +70,7 @@ void setup() {
   Serial.print("sumakses") //SD
 }
 
+//method for SD "in setup"
 void initializeCard() {
   Serial.print("initializing: ");
   if(!SD.begin(5)) {
@@ -68,6 +79,8 @@ void initializeCard() {
   }
   Serial.print("oks");
 }
+
+//method for SD "in setup"
 void writeHeader() {
   myFile = SD.open(positions, FILE_WRITE); 
 
@@ -84,6 +97,7 @@ void writeHeader() {
   }
 }
 
+//method for Fingerprint "in setup"
 void FINGER() {
   finger.begin(57600);
   delay(5);
@@ -113,34 +127,44 @@ void FINGER() {
 }
 
 void loop() {
-  getFingerprintID();
-if((radio.available()) && (finger.fingerID == 1)||(finger.fingerID == 2)||(finger.fingerID == 3)) {
+  radio.stopListening(); 
+  radio.write(&data,sizeof(char));
+  delay(50);
+
+  radio.startListening();
+  if(radio.available()) {
+    Serial.println("may signal");
+  }
+  getFingerprintID(); //tells that a fingerprint is needed for the device to work
+  if((radio.available()) && (finger.fingerID == 1)||(finger.fingerID == 2)||(finger.fingerID == 3)) {  
 
   bool done=false;
 
     while(!done){
 
 
-      done = radio.read(3POS, sizeof(3POS));
-      Serial.print("Time: "); Serial.print(3POS[0]); Serial.print("\n");
-      Serial.print("Day(DMY): "); Serial.print(3POS[1]); Serial.print("\n");
+      done = radio.read(3POS, sizeof(3POS));  //reads the data received
+      Serial.print("Time: "); Serial.print(3POS[0]); Serial.print("\n");  //time
+      Serial.print("Day(DMY): "); Serial.print(3POS[1]); Serial.print("\n");   //day
       
-      Serial.print("POS1: "); Serial.print(3POS[2]); Serial.print("\n");
-      Serial.print("POS2: "); Serial.print(3POS[3]); Serial.print("\n");
-      Serial.print("POS3: "); Serial.print(3POS[4]); Serial.print("\n");
+      Serial.print("POS1: "); Serial.print(3POS[2]); Serial.print("\n");  //for servo1
+      Serial.print("POS2: "); Serial.print(3POS[3]); Serial.print("\n");  //for servo2
+      Serial.print("POS3: "); Serial.print(3POS[4]); Serial.print("\n");  //for servo3
 
-      SR1.write(pos1);
-      SR2.write(pos2);
-      SR3.write(pos3);
+      SR1.write(pos1);  //S1
+      SR2.write(pos2);  //S2
+      SR3.write(pos3);  //S3
       delay(50);
       
-      writeData();
+      writeData();  //method on SD
     }
 }
 else {
     Serial.println("naur");
 }
 }
+
+//fingerprint
 uint8_t getFingerprintID() {
   uint8_t p = finger.getImage();
   switch (p) {
@@ -224,6 +248,7 @@ int getFingerprintIDez() {
   return finger.fingerID;
 }
 
+//method for SD card "in loop"
 void writeData() {
   myFile = SD.open(positions, FILE_WRITE);
 
@@ -246,4 +271,3 @@ void writeData() {
     Serial.print("error in write");
   }
 }
-
