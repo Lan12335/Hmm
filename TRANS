@@ -105,7 +105,7 @@ void DebuggingF123() {
   }
 
   else{
-    Serial.print("no mvement")
+    Serial.print("no movement")
   }
 
   if(F2>100) {
@@ -113,7 +113,7 @@ void DebuggingF123() {
   }
 
   else{
-    Serial.print("no mvement")
+    Serial.print("no movement")
   }
 
  if(F3>100) {
@@ -121,7 +121,7 @@ void DebuggingF123() {
   }
 
   else{
-    Serial.print("no mvement")
+    Serial.print("no movement")
   } 
 } 
 
@@ -183,6 +183,7 @@ void loop() {
     RandomNn1 = random(36)-random(87)+random(80);
     RandomNn2 = random(97)-random(3)+random(72);
     RandomNn3 = random(80)-random(17)+random(47);
+    Serial.println("Sensing..."+"Triggered Nnormal 1"+"\n");
   
     pos1=map((map(abs(RandomNn1),0,abs(ValX[2]),0,3)*10),0,30,0,90);
     pos2=map((map(abs(RandomNn2),0,abs(ValY[2]),0,3)*10),0,30,0,90);
@@ -194,6 +195,7 @@ void loop() {
     RandomNn1 = random(80)-random(69)+random(3);
     RandomNn2 = random(39)-random(21)+random(30);
     RandomNn3 = random(26)-random(60)+random(26);  
+    Serial.println("Sensing..."+"Triggered Nnormal 2"+"\n");
  
     pos1=map((map(abs(RandomNn1),0,abs(ValX[3]),0,3)*10),0,30,0,90);
     pos2=map((map(abs(RandomNn2),0,abs(ValY[3]),0,3)*10),0,30,0,90);
@@ -205,6 +207,7 @@ void loop() {
     RandomNn1 = random(93)-random(15)+random(13);
     RandomNn2 = random(33)-random(68)+random(28);
     RandomNn3 = random(25)-random(60)+random(76);
+    Serial.println("Sensing..."+"Triggered Nnormal 3"+"\n");
 
     pos1=map((map(abs(RandomNn1),0,abs(ValX[4]),0,3)*10),0,30,0,90);
     pos2=map((map(abs(RandomNn2),0,abs(ValY[4]),0,3)*10),0,30,0,90);
