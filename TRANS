@@ -46,7 +46,6 @@ void setup() {
   
   //nRF24L01
   radio.begin();
-  radio.openWritingPipe(Address);
   radio.setPALevel(RF24_PA_MIN);
   radio.setDataRate(RF24_2MBPS);
   radio.setChannel(124);
