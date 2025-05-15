@@ -142,8 +142,11 @@ void REALTIME() {
     Serial.write('/');
     Serial.print(tmYearToCalendar(tm.Year));
     Serial.println("\n");
+    3POS[0]={print2digits(tm.Hour) + ":" + print2digits(tm.Minute) + ":" + print2digits(tm.Second)};
+    3POS[1]={print2digits(tm.Day) + "/" + print2digits(tm.Month) + "/" + print2digits(tm.Year)};
 
-  } else {
+}
+  else {
     if (RTC.chipPresent()) {
       Serial.println("run SetTime");
       Serial.println("example to initialize the time and begin running.");
@@ -171,10 +174,6 @@ void loop() {
   F1=analogRead(Ff1); F2=analogRead(Ff2); F3=analogRead(Ff3);
   
   DebuggingF123();
-
-  3POS[0]={print2digits(tm.Hour) + ":" + print2digits(tm.Minute) + ":" + print2digits(tm.Second)};
-
-  3POS[1]={print2digits(tm.Day) + "/" + print2digits(tm.Month) + "/" + print2digits(tm.Year)};
 
   start();  //just LED 
   
