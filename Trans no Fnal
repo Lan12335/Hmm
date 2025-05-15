@@ -1,0 +1,160 @@
+//Transmitter, arduino UNO without serial
+
+#include <nRF24L01.h>
+#include <SPI.h>
+#include <RF24.h>
+#include <Wire.h>
+#include <Time.h>
+#include <DS1307RTC.h>
+
+RF24 radio(8,7);
+byte Address[] [6] = {"1Node","2Node}";
+
+int F1; int F2; int F3;
+const byte Ff1 = A0; const byte Ff2 = A1; const byte Ff3 = A2;
+
+int RandomNn1; int RandomNn2; int RandomNn3;
+
+byte pos1=90; byte pos2=90; byte pos3=90;
+int 3POS[6];  //we used an array to send the data
+unsigned char data;
+
+int ValX[6] = {99-15+40,59-19+7,36-87+80,80-69+3,93-15+13};
+int ValY[6] = {52-38+18,38-29+2,97-3+72,39-21+30,33-68+28};
+int ValZ[6] = {78-84+81,49-38+62,80-17+47,26-60+26,25-60+76};  
+
+const byte Green = 2; 
+const byte Red = 3;
+
+void setup() {
+  pinMode(Green, OUTPUT);
+  pinMode(Red, OUTPUT);
+  digitalWrite(Green, LOW);
+  digitalWrite(Red, LOW);
+  
+  radio.begin();
+  radio.openWritingPipe(Address);
+  radio.setPALevel(RF24_PA_MIN);
+  radio.setDataRate(RF24_2MBPS);
+  radio.setChannel(124);
+  radio.openWritingPipe(Address[1])
+  radio.openReadingPipe(1, Address[0])  
+}
+
+void start() {
+   if(F1>=100||F2>=100||F3>=100) {
+    digitalWrite(Green, HIGH);
+    digitalWrite(Red, LOW);
+    Serial.println("Green on" +"\n");
+    delay(100);    
+  }
+ 
+   else{
+    digitalWrite(Green, LOW);
+    digitalWrite(Red, HIGH);
+    Serial.println("Red on"+"\n");
+    delay(100);
+ }     
+}
+
+void normal() {
+   if(F1>100||F2>100||F3>100) {
+    RandomNn1 = random(99)-random(15)+random(40);
+    RandomNn2 = random(52)-random(38)+random(18);
+    RandomNn3 = random(78)-random(84)+random(81);
+
+    pos1=map((map(abs(RandomNn1),0,abs(ValX[0]),0,3)*10),0,30,0,90);
+    pos2=map((map(abs(RandomNn2),0,abs(ValY[0]),0,3)*10),0,30,0,90);
+    pos3=map((map(abs(RandomNn3),0,abs(ValZ[0]),0,3)*10),0,30,0,90);
+    delay(100);
+  }
+
+  if(F1>=700||F2>=700||F3>=700) {
+    RandomNn1 = random(59)-random(19)+random(7);
+    RandomNn2 = random(38)-random(29)+random(2);
+    RandomNn3 = random(49)-random(38)+random(62);
+    
+    pos1=map((map(abs(RandomNn1),0,abs(ValX[1]),0,3)*10),0,30,0,90);
+    pos2=map((map(abs(RandomNn2),0,abs(ValY[1]),0,3)*10),0,30,0,90);
+    pos3=map((map(abs(RandomNn3),0,abs(ValZ[1]),0,3)*10),0,30,0,90);
+    delay(100);
+  }
+}
+
+
+//method for RTC "loop"
+void print2digits(int number) {
+  if (number >= 0 && number < 10) {
+    Serial.write('0');
+  }
+  Serial.print(number);
+}
+
+void loop() { 
+  REALTIME();
+
+  F1=analogRead(Ff1); F2=analogRead(Ff2); F3=analogRead(Ff3);
+  
+  tmElements_t tm;
+  if (RTC.read(tm)) {
+  3POS[0]={print2digits(tm.Hour) + ":" + print2digits(tm.Minute) + ":" + print2digits(tm.Second)};
+
+  3POS[1]={print2digits(tm.Day) + "/" + print2digits(tm.Month) + "/" + print2digits(tm.Year)};
+  }
+
+  start();  
+  
+  normal(); 
+  
+  if(F1>=500) {
+    RandomNn1 = random(36)-random(87)+random(80);
+    RandomNn2 = random(97)-random(3)+random(72);
+    RandomNn3 = random(80)-random(17)+random(47);
+  
+    pos1=map((map(abs(RandomNn1),0,abs(ValX[2]),0,3)*10),0,30,0,90);
+    pos2=map((map(abs(RandomNn2),0,abs(ValY[2]),0,3)*10),0,30,0,90);
+    pos3=map((map(abs(RandomNn3),0,abs(ValZ[2]),0,3)*10),0,30,0,90);
+    delay(100);
+  }
+  
+  if(F2>=500) {
+    RandomNn1 = random(80)-random(69)+random(3);
+    RandomNn2 = random(39)-random(21)+random(30);
+    RandomNn3 = random(26)-random(60)+random(26);  
+ 
+    pos1=map((map(abs(RandomNn1),0,abs(ValX[3]),0,3)*10),0,30,0,90);
+    pos2=map((map(abs(RandomNn2),0,abs(ValY[3]),0,3)*10),0,30,0,90);
+    pos3=map((map(abs(RandomNn3),0,abs(ValZ[3]),0,3)*10),0,30,0,90);
+    delay(100);
+  }
+  
+  if(F3>=500) {
+    RandomNn1 = random(93)-random(15)+random(13);
+    RandomNn2 = random(33)-random(68)+random(28);
+    RandomNn3 = random(25)-random(60)+random(76);
+
+    pos1=map((map(abs(RandomNn1),0,abs(ValX[4]),0,3)*10),0,30,0,90);
+    pos2=map((map(abs(RandomNn2),0,abs(ValY[4]),0,3)*10),0,30,0,90);
+    pos3=map((map(abs(RandomNn3),0,abs(ValZ[4]),0,3)*10),0,30,0,90);
+    delay(100);
+  }
+
+  radio.startListening();
+  
+  if(radio.available()) {
+    while(radio.available()) {
+      radio.read(&data, sizeof(char)); 
+    }
+  }
+
+  if(data==1) {
+    radio.stopListening();
+    radio.write(3POS, sizeof(3POS));
+    3POS[0];
+    3POS[1];
+    3POS[2]=pos1; 
+    3POS[3]=pos2;
+    3POS[4]=pos3;
+  }
+  delay(900);
+}
