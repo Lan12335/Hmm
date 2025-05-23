@@ -31,18 +31,17 @@ int ValX[6] = {99-15+40,59-19+7,36-87+80,80-69+3,93-15+13};
 int ValY[6] = {52-38+18,38-29+2,97-3+72,39-21+30,33-68+28};
 int ValZ[6] = {78-84+81,49-38+62,80-17+47,26-60+26,25-60+76};  
 
-//irrelevant but for LED
+//For LED
 const byte Green = 2; 
-const byte Red = 3;
+const byte Green on = 4;
 
 void setup() {
   Serial.begin(9600);
 
   //LED
   pinMode(Green, OUTPUT);
-  pinMode(Red, OUTPUT);
-  digitalWrite(Green, LOW);
-  digitalWrite(Red, LOW);
+  pinMode(Green on, OUTPUT); 
+  digitalWrite(Green on, HIGH);
   
   //nRF24L01
   radio.begin();
@@ -57,15 +56,13 @@ void setup() {
 void start() {
    if(F1>=100||F2>=100||F3>=100) {
     digitalWrite(Green, HIGH);
-    digitalWrite(Red, LOW);
     Serial.println("Green on" +"\n");
     delay(100);    
   }
  
    else{
     digitalWrite(Green, LOW);
-    digitalWrite(Red, HIGH);
-    Serial.println("Red on"+"\n");
+    Serial.println("No reads"+"\n");
     delay(100);
  }     
 }
