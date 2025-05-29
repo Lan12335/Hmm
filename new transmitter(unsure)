@@ -1,0 +1,301 @@
+//since the force sensor have values from 0 to 1023 or so... 
+//I'll make it so that there is only three sensors, so the limit will be 0-914, w/10k resistor 
+//with the design on the key, the part where in it has the same size of blocks per pin, it will vary the force sensor based on how many blocks are pushing againts the sensor
+
+//each will have 1 force sensor and 10k resistor
+
+/*
+Want to happen:
+When F1 or F2 or F3 is moved. The doorknob will have a new password to be used. 
+
+The key pins will have 1cm for 100 in F1, 2cm for 200 in F2, ...
+
+How to code it:
+
+***THE CHANGES WILL VARY WHEN WE HAVE THE SENSORS IN HAND***
+
+When F1 is >=100, the passkey will change to F1=100, F2=200, F3=300...
+When F2 is >=100, the passkey will change to F1=100, F2=200, F3=300...
+When F3 is >=100, the passkey will change to F1=100, F2=200, F3=300...
+
+When F1 is >=200, the passkey will change to F1=100, F2=300, F3=200...
+When F2 is >=200, the passkey will change to F1=100, F2=300, F3=200...
+When F3 is >=200, the passkey will change to F1=100, F2=300, F3=200...
+
+When F1 is >=300, the passkey will change to F1=200, F2=300, F3=100...
+When F2 is >=300, the passkey will change to F1=200, F2=300, F3=100...
+When F3 is >=300, the passkey will change to F1=200, F2=300, F3=100...
+
+When F1 is >=400, the passkey will change to F1=300, F2=200, F3=100...
+When F2 is >=400, the passkey will change to F1=300, F2=200, F3=100...
+When F3 is >=400, the passkey will change to F1=300, F2=200, F3=100...
+
+When F1 is >=500, the passkey will change to F1=400, F2=100, F3=200...
+When F2 is >=500, the passkey will change to F1=400, F2=100, F3=200...
+When F3 is >=500, the passkey will change to F1=400, F2=100, F3=200...
+
+limited to the max of 500 in force sensor for it may hinder the 3d printed prototype 
+*/
+
+#include <nRF24L01.h>
+#include <SPI.h>
+#include <RF24.h>
+#include <Wire.h>
+#include <Time.h>
+#include <DS1307RTC.h>
+
+//for nRF24L01
+RF24 radio(8,7);
+byte Address[] [6] = {"1Node","2Node}";
+
+const int O=100;
+const int T=200;
+const int Th=300;
+const int F=400;
+const int Fi=500;
+int F1; int F2; int F3;
+int pos1; int pos2; int pos3;  //positions of servo
+const byte Ff1=A0; const byte Ff2=A1; const byte Ff3=A2;  //Ff123 is the force sensors and are connected to A012
+
+bool key1=false;  //For opening
+bool key2=false;
+bool key3=false;
+bool key4=false;
+bool key5=false;
+
+const byte Close=1;  //pin will vary
+const byte Open=2;  //pin will vary
+const byte sensing=3;  //pin will vary
+const byte switchon=4;  //pin will vary
+
+unsigned char data;  //data packet to be received from the LGT RF nano, must be ==1
+int 3POSRTC[6]={ };  //data array to be sent to the LGT RF nano
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(Close, OUTPUT);
+  pinMode(Open, OUTPUT);
+  pinMode(sensing, OUTPUT);
+  pinMode(switchon, OUTPUT);  
+  digitalWrite(switchon, HIGH);
+
+  radio.begin();
+  radio.setPALevel(RF24_PA_MIN);
+  radio.setDataRate(RF24_2MBPS);
+  radio.setChannel(124);
+  radio.openWritingPipe(Address[1])
+  radio.openReadingPipe(1, Address[0])  
+}
+
+void loop() {
+  tmElements_t tm;
+
+  F1=analogRead(Ff1);  F2=analogRead(Ff2);  F3=analogRead(Ff3);
+  
+  if((F1>=O) || (F2>=O) || (F3>=O)) {
+    digitalWrite(sensing, HIGH);
+  }
+  else if((F1<O) || (F2<O) || (F3<O)) {
+    digitalWrite(sensing,LOW);
+  }
+
+  REALTIME();  //includes RTC and RTC sending
+
+  radio.startListening();
+
+  opening();
+
+  if(!radio.available()) {
+    while(!radio.available()){
+      v12345();
+    }
+  }
+
+  else{
+    delay(1000);
+  }
+
+  DS();
+
+  delay(1000);
+}
+
+void REALTIME() {
+  if (RTC.read(tm)) {
+    Serial.println("Time: ");
+    print2digits(tm.Hour);
+    Serial.write(':');
+    print2digits(tm.Minute);
+    Serial.write(':');
+    print2digits(tm.Second);
+    Serial.print(",Date: ");
+    Serial.print(tm.Day);
+    Serial.write('/');
+    Serial.print(tm.Month);
+    Serial.write('/');
+    Serial.print(tmYearToCalendar(tm.Year));
+    Serial.println("\n");
+    3POSRTC[0]={print2digits(tm.Hour) + ":" + print2digits(tm.Minute) + ":" + print2digits(tm.Second)};
+    3POSRTC[1]={print2digits(tm.Day) + "/" + print2digits(tm.Month) + "/" + print2digits(tm.Year)};
+
+  }
+  
+  else {
+    if (!RTC.chipPresent()) {
+      Serial.println("problem...RTC");
+    }
+  }
+}
+
+//Ln 101: If((key1) && (F1==pos1)). what i want to happen is, if key1 is true then the maps on O1 will be the passkey of the doorknob
+void opening() {
+  if((radio.available()) && (F1>=O) || (F2>=O) || (F3>=O)) {
+    //F123 will equal to a value in keys on void.v12345
+
+    //in Ln's:178-183-188-... when && F123>=pos123, it indicates that F123 must be equal to pos123(in degrees converted to values in 0-914) to all be true
+    if((key1==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+    }
+  
+    if((key2==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+    }
+  
+    if((key3==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+    }
+  
+    if((key4==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+    }
+  
+    if((key5==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+    }
+
+    else{
+      digitalWrite(Close, HIGH);
+      digitalWrite(Open, LOW);
+    }
+  }
+
+  else if((!radio.available()) && (F1>=O) || (F2>=O) || (F3>=O)) {
+    if((key1==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+      3POSRTC[5] = {"key1"};
+    }
+  
+    if((key2==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+      3POSRTC[5] = {"key2"};
+    }
+  
+    if((key3==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+      3POSRTC[5] = {"key3"};
+    }
+  
+    if((key4==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+      3POSRTC[5] = {"key4"};
+    }
+  
+    if((key5==true) && (F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+      digitalWrite(Close, LOW);
+      digitalWrite(Open, HIGH);
+      3POSRTC[5] = {"key5"};
+    }
+
+    else{
+      digitalWrite(Close, HIGH);
+      digitalWrite(Open, LOW);
+    }
+  }
+
+  else if((!radio.available()) && (F1<=O) || (F2<=O) || (F3<=O)) {
+    digitalWrite(Close, HIGH);
+    digitalWrite(Open, LOW);
+    }
+}
+
+void v12345() {
+  //any value that will make so that when F123 is x then pos123 will be x, and when pos123=x and F123=x open will be HIGH
+  //10,20,30,40 are degrees in servo
+  //The probability will increase as the number of if statements in this method increases, current probability is 1/5
+
+  if((F1>=O) || (F2>=O) || (F3>=O)) {
+    pos1=10; 
+    pos2=20; 
+    pos3=30; 
+
+    key1=!key1;
+  }
+  
+  else if((F1>=T) || (F2>=T) || (F3>=T)) {
+    pos1=10;
+    pos2=30;
+    pos3=20;
+
+    key2=!key2;
+  }
+  
+  else if((F1>=Th) || (F2>=Th) || (F3>=Th)) {
+    pos1=20;
+    pos2=30;
+    pos3=10;
+
+    key3=!key3;
+  }
+  
+  else if((F1>=F) || (F2>=F) || (F3>=F)) {
+    pos1=30;
+    pos2=20;
+    pos3=10;
+
+    key4=!key4;
+  }
+  
+  else if((F1>=Fi) || (F2>=Fi) || (F3>=Fi)) {
+    pos1=40;
+    pos2=10;
+    pos3=20;
+
+    key5=!key5;
+  }
+}
+
+//data sending pos
+void DS() {
+  if(radio.available()) {
+    while(radio.available()) {
+      radio.read(&data, sizeof(char)); 
+    }
+  }
+
+  if(data==1) {
+    radio.stopListening();
+    radio.write(3POSRTC, sizeof(3POSRTC));
+    3POSRTC[0];
+    3POSRTC[1];
+    3POSRTC[2]=pos1; 
+    3POSRTC[3]=pos2;
+    3POSRTC[4]=pos3;
+    3POSRTC[5];
+    Serial.print("sent");
+  }
+
+  else{
+    Serial.print("wrong data value received...");
+    Serial.print("radio unnavailable...");
+  }
+}
