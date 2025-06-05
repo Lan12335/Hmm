@@ -1,0 +1,131 @@
+//IN NANO
+#include <Adafruit_Fingerprint.h>
+#include <Servo.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+// pin #2 is IN from sensor (YELLOW wire) pin #3 is OUT from arduino  (WHITE wire)
+#if (defined(__AVR__) || defined(ESP8266)) && !defined(__AVR_ATmega2560__)
+SoftwareSerial mySerial(2, 3);
+#else
+#define mySerial Serial1
+#endif
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+Servo S1;
+Servo S2;
+Servo S3;
+int POS[3];
+
+byte dataf=0;  //data FINGER
+unsigned char datap=1;  //data PASSKEY
+
+RF24 radio(10,9);
+const byte Address[] [6] = {"1Node","2Node"};
+
+void setup() {
+  Serial.begin(9600);
+  while(!Serial); delay(100);
+
+  finger.begin(57600); delay(5);
+
+  pinMode(, OUTPUT);  //no pins yet
+
+  S1.attach(, 500, 2500);  //no pins yet
+  S2.attach(, 500, 2500);
+  S3.attach(, 500, 2500);
+  
+  delay(100);
+  S1.write(90);
+  S2.write(90);
+  S3.write(90);
+  delay(100);
+  
+  //nRF24L01
+  radio.begin();
+  radio.setPALevel(RF24_PA_MIN);
+  radio.setDataRate(RF24_2MBPS);
+  radiosetChannel(124);
+  radio.openWritingPipe(Address[0]);
+  radio.openReadingPipe(1, Address[1]);
+}
+
+void loop() {
+  getFingerprintID();
+
+  Serial.print("dataf: "); Serial.print(dataf); Serial.print("\n");
+
+  while(dataf==2) {
+    radio.stopListening(); 
+    radio.write(&datar,sizeof(char));
+    delay(50); 
+
+    digitalWrite(, HIGH);
+
+    radio.startListening();
+    if(radio.available()) {
+        radio.read(&POS, sizeof(POS));
+        Serial.print(POS[0]);  Serial.print("\t");
+        Serial.print(POS[1]);  Serial.print("\t");
+        Serial.print(POS[2]);  Serial.print("\t");
+        
+        delay(50);
+        S1.write(POS[0]);
+        S2.write(POS[1]);
+        S3.write(POS[2]);
+        delay(50);
+    }
+
+    else if(!radio.available()) {
+        Serial.print("radio unnav");
+    }
+
+  }
+  delay(5000);         
+}
+
+uint8_t getFingerprintID() {
+  uint8_t p = finger.getImage();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image taken");
+      break;
+    case FINGERPRINT_NOFINGER:
+      Serial.println("No finger detected");
+      dataf=1;
+      return p;
+  }
+
+  // OK success!
+
+  p = finger.image2Tz();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image converted");
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      Serial.println("Image too messy");
+      return p;
+  }
+
+  // OK converted!
+  p = finger.fingerSearch();
+  if ((p == FINGERPRINT_OK) && (finger.fingerID==1) || (finger.fingerID==2) || (finger.fingerID==3)) {
+    Serial.println("Found a print match!");
+    dataf=2;
+  }
+  else if((p == FINGERPRINT_OK) && (finger.fingerID==69) || (finger.fingerID==96)) {
+    Serial.print("kupal kayong dalawa");
+    dataf=2;
+  }
+   else if (p == FINGERPRINT_NOTFOUND) {
+    Serial.println("Did not find a match");
+    dataf=3;
+    return p;
+  }
+
+  // found a match!
+  Serial.print("Found ID #"); Serial.print(finger.fingerID); Serial.print("\n");
+  return finger.fingerID;
+}
