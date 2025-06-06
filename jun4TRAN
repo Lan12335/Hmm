@@ -37,6 +37,52 @@ When F3 is >=500, the passkey will change to F1=400, F2=100, F3=200...
 limited to the max of 500 in force sensor for it may hinder the 3d printed prototype 
 */
 
+/*
+*****PIN CONNECTIONS*****
+
+nRF24L01 adapter
+GND-GND
+VCC-5V
+MISO-12
+MOSI-11
+SCK-13
+CE-8
+CSN-7
+IR- NOT USED
+
+micro SD card adapter 
+GND-GND
+VCC-5V
+MISO-12
+MOSI-11
+SCK-13
+CS-4
+
+DS3231
+GND-GND
+VCC-5V
+SCL-A4
+SDA-A3
+SQW- NOT USED
+32K- NOT USED
+
+LED(close/red)
+ANODE-5
+CAT-GND
+
+LED(sensing/green)
+ANODE-2
+CAT-GND
+
+LED(open/green)
+ANODE-3
+CAT-GND
+
+force sensors
+FS1-A0
+FS2-A1
+FS3-A2
+*/
 
 /*
 I=initializing
