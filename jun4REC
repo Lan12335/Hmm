@@ -55,9 +55,9 @@ void setup() {
 
   finger.begin(57600); delay(5);
 
-  pinMode(, OUTPUT);  //no pins yet
+  pinMode(, OUTPUT);  
 
-  S1.attach(, 500, 2500);  //no pins yet
+  S1.attach(, 500, 2500);  
   S2.attach(, 500, 2500);
   S3.attach(, 500, 2500);
   
@@ -77,20 +77,20 @@ void setup() {
 }
 
 void loop() {
-  getFingerprintID();
+  getFingerprintID();  //all about the fingerprint, it will output dataf for finferprint ID
 
   Serial.print("dataf: "); Serial.print(dataf); Serial.print("\n");
 
-  while(dataf==2) {
+  while(dataf==2) {  //dataf can only be true if finger.fingerID(person) is 1,2,3,69, or 96
     radio.stopListening(); 
-    radio.write(&datar,sizeof(char));
+    radio.write(&datar,sizeof(char));  //writes datar for ID
     delay(50); 
 
-    digitalWrite(, HIGH);
+    digitalWrite(, HIGH);  //this lights up when fingerprint is an ID
 
     radio.startListening();
     if(radio.available()) {
-        radio.read(&POS, sizeof(POS));
+        radio.read(&POS, sizeof(POS));  //reads from transmitter
         Serial.print(POS[0]);  Serial.print("\t");
         Serial.print(POS[1]);  Serial.print("\t");
         Serial.print(POS[2]);  Serial.print("\t");
