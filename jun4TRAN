@@ -89,6 +89,7 @@ I=initializing
 G=good
 P=problem
 */
+
 #include <nRF24L01.h>
 #include <SPI.h>
 #include <RF24.h>
@@ -120,10 +121,9 @@ FS 3 for F3 Ff3 A2
 unsigned int F1; unsigned int F2; unsigned int F3;
 unsigned int pos1; unsigned int pos2; unsigned int pos3;  //positions of servo
 
-#define Close 1  //pin will vary
-#define Open 2  //pin will vary
-#define sensing 3  //pin will vary
-#define switchon 4  //pin will vary
+#define Close 1  
+#define Open 2  
+#define sensing 3  
 
 unsigned char data;  //data packet to be received from the LGT RF nano, must be ==1
 int POS[3]={ };  //data array to be sent to the LGT RF nano
@@ -136,8 +136,6 @@ void setup() {
   pinMode(Close, OUTPUT);
   pinMode(Open, OUTPUT);
   pinMode(sensing, OUTPUT);
-  pinMode(switchon, OUTPUT);  
-  digitalWrite(switchon, HIGH);
 
   radio.begin();
   radio.setPALevel(RF24_PA_MIN);
@@ -183,12 +181,12 @@ void loop() {
 
   F1=analogRead(A0);  F2=analogRead(A1);  F3=analogRead(A2); //FS
   
-  if((F1>=O) || (F2>=O) || (F3>=O)) {
+  if((F1>=O) || (F2>=O) || (F3>=O)) {  //FS are giving values
     digitalWrite(sensing, HIGH);
     Serial.println("Sensing");
   }
 
-  else if((F1<O) || (F2<O) || (F3<O)) {
+  else if((F1<O) || (F2<O) || (F3<O)) {  //FS are not giving values
     digitalWrite(sensing, LOW);
   }
   
@@ -200,10 +198,10 @@ void loop() {
     Serial.println("please insert key you have 6 sec");
     delay(6000);  //time to insert key
 
-    while((F1>=O) && (F2>=O) && (F3>=O)) {
+    while((F1>=O) && (F2>=O) && (F3>=O)) {  
       opening();
 
-      if(!radio.available() && (F1<=O) && (F2<=O) && (F3<=O)) {  //if nawala ung wallet and walang key, break
+      if(!radio.available() && (F1<=O) && (F2<=O) && (F3<=O)) {  //if nawala ung wallet and walang key
         break;
       }
     }
@@ -249,7 +247,7 @@ void REALTIME() {
     Serial.print(tm.Day);
     Serial.write('/');
     Serial.print(tm.Month);
-    Serial.println("\n");
+    Serial.println("\n");  //i took year off
   }
   
   else {
