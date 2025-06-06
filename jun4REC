@@ -1,4 +1,29 @@
 //IN NANO
+
+/*
+*****PIN CONNECTIONS*****
+AS608
+GND-GND
+VCC-3.3V
+Yellow wire-2
+White wire-3
+
+SERVO
+GND-GND
+VCC-5~6V
+S1-4
+S2-5
+S3-6
+
+nRF24L01
+CE-10
+CSN-9
+
+LED(fingerprint)
+ANODE-11
+CAT-GND
+*/
+
 #include <Adafruit_Fingerprint.h>
 #include <Servo.h>
 #include <SPI.h>
