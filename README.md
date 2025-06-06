@@ -16,3 +16,7 @@ new transmitter(w/SD) is the 3rd made code for the transmitter, is experimental 
 we can use the nRF24L01 module with the SD card adaptor module in the same circuit...
 
 Arduino Research[folder] it is a folder from my computer in where I edit from VS code or Arduino IDE software 
+
+jun4REC is the latest code for the receiver, for arduino LGT RF nano board
+
+jun4TRAN is the latest code for the transmitter, for arduino UNO R3
