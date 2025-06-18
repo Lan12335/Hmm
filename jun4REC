@@ -54,11 +54,12 @@ void setup() {
 
   finger.begin(57600); delay(5);
 
-  pinMode(, OUTPUT);  
+  pinMode(11, OUTPUT);  
+  pinMode(12, OUTPUT);
 
-  S1.attach(, 500, 2500);  
-  S2.attach(, 500, 2500);
-  S3.attach(, 500, 2500);
+  S1.attach(6, 500, 2500);  
+  S2.attach(5, 500, 2500);
+  S3.attach(4, 500, 2500);
   
   delay(100);
   S1.write(90);
@@ -85,7 +86,7 @@ void loop() {
     radio.write(&datap,sizeof(char));  //writes datar for ID
     delay(50); 
 
-    digitalWrite(, HIGH);  //this lights up when fingerprint is an ID
+    digitalWrite(12, HIGH);  //this lights up when fingerprint is an ID
 
     radio.startListening();
     if(radio.available()) {
@@ -93,19 +94,29 @@ void loop() {
         Serial.print(POS[0]);  Serial.print("\t");
         Serial.print(POS[1]);  Serial.print("\t");
         Serial.print(POS[2]);  Serial.print("\t");
+
+        digitalWrite(11,HIGH);
         
         delay(50);
         S1.write(POS[0]);
         S2.write(POS[1]);
         S3.write(POS[2]);
         delay(50);
+
+        digitalWrite(11,LOW);
     }
 
     else if(!radio.available()) {
         Serial.print("radio unnav");
+        digitalWrite(11,LOW);
     }
 
   }
+
+  if(dataf!=2) {
+    digitalWrite(12, LOW);
+  }
+
   delay(1000);         
 }
 
