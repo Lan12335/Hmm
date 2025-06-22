@@ -1,0 +1,142 @@
+  //Real Time Clock and Force Sensors written to SD card 
+
+/*
+
+
+------------------------------------------------------------SAKSES----------------------------------------------------
+
+*/
+
+  //Transmitter node
+  #include <SPI.h>
+  #include <Wire.h>
+  #include <Time.h>
+  #include <DS1307RTC.h>
+  #include <SD.h>
+
+  File myFile;
+
+  #define Close 1  
+  #define Open 2  
+  #define sensing 3  
+
+  int F1;
+  int F2;
+  int F3;
+
+  void setup() {
+    Serial.begin(9600);
+
+    pinMode(Close, OUTPUT);
+    pinMode(Open, OUTPUT);
+    pinMode(sensing, OUTPUT);
+
+    SDmanage();
+  }
+
+  void SDmanage() {
+      Serial.println("SDmanage I...");
+      if(!SD.begin(10)) {
+          Serial.println("SDmanage P...");
+          while(1);
+      }
+
+      else if(SD.begin(10)) {
+      Serial.print("SDmanage G...");
+      }
+
+      if(SD.exists("experi2.txt")) {
+          SD.remove("experi2.txt");
+          Serial.print("\tfile has been overwritten\t");
+      }
+
+      myFile = SD.open("experi2.txt", FILE_WRITE);
+      if(myFile) {
+          Serial.print("writing to rsrch: ");
+          myFile.println("Time,Day,POS");
+          myFile.close();
+      }
+
+      else {
+          Serial.print("SDmanage-header P...");
+      }
+  }
+
+  void loop() {
+      REALTIME();
+
+        F1=analogRead(A0);
+        F2=analogRead(A1);
+        F3=analogRead(A2);
+
+        FS();
+        
+        Serial.println(F1);
+        Serial.println(F2);
+        Serial.println(F3);
+        
+      digitalWrite(Open, HIGH);
+      digitalWrite(sensing, HIGH);
+      digitalWrite(Close, LOW);
+      Serial.println("open");
+
+      delay(1000);
+
+      digitalWrite(Open, LOW);
+      digitalWrite(sensing, LOW);
+      digitalWrite(Close, HIGH);
+      Serial.println("close");
+
+  }
+
+  void REALTIME() {
+    tmElements_t tm;
+
+    if (RTC.read(tm)) {
+      Serial.println("writing... ");
+
+      myFile = SD.open("experi2.txt", FILE_WRITE);
+
+      if(myFile) {
+      Serial.println("writing na...");
+      Serial.println(tm.Second);
+
+      myFile.print("Time: ");
+      myFile.print((tm.Hour));
+      myFile.print(":");
+      myFile.print((tm.Minute));
+      myFile.print(":");
+      myFile.print((tm.Second));
+      myFile.print("Day(DMY): ");
+      myFile.print(tm.Day);
+      myFile.print("/");
+      myFile.print(tm.Month);
+      myFile.println("\n");
+      
+      myFile.close();
+    }
+    }
+    
+    else {
+      if (!RTC.chipPresent()) {
+        Serial.println("REALTIME P...");
+      }
+    }
+  }
+
+  void FS() {
+    myFile = SD.open("experi2.txt", FILE_WRITE);
+
+    if(myFile) {
+      myFile.println("\n");
+      myFile.print("FS...");
+      myFile.print(F1);
+      myFile.print(",");
+      myFile.print(F2);
+      myFile.print(",");
+      myFile.print(F3);
+      myFile.println("\n");
+
+      myFile.close();
+    }
+  }
