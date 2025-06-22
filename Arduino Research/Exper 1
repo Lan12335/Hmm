@@ -1,0 +1,126 @@
+//Real Time Clock to SD card
+
+/*
+
+
+------------------------------------------------------------SAKSES----------------------------------------------------
+WE CAN EXCLUDE VOID PRINT2DIGITS
+
+*/
+
+//Real Time Clock to SD card
+
+#include <SPI.h>
+#include <Wire.h>
+#include <Time.h>
+#include <DS1307RTC.h>
+#include <SD.h>
+
+File myFile;
+
+#define Close 1  
+#define Open 2  
+#define sensing 3  
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(Close, OUTPUT);
+  pinMode(Open, OUTPUT);
+  pinMode(sensing, OUTPUT);
+
+  SDmanage();
+}
+
+void SDmanage() {
+    Serial.println("SDmanage I...");
+    if(!SD.begin(10)) {
+        Serial.println("SDmanage P...");
+    }
+
+    else if(SD.begin(10)) {
+    Serial.print("SDmanage G...");
+    }
+
+    if(SD.exists("experi.txt")) {
+        SD.remove("experi.txt");
+        Serial.print("\tfile has been overwritten\t");
+    }
+
+    myFile = SD.open("experi.txt", FILE_WRITE);
+    if(myFile) {
+        Serial.print("writing to experi.txt: ");
+        myFile.println("Time,Day");
+        myFile.close();
+    }
+
+    else {
+        Serial.print("SDmanage-header P...");
+    }
+
+    
+
+}
+
+void loop() {
+    REALTIME();
+
+    digitalWrite(Open, HIGH);
+    digitalWrite(sensing, HIGH);
+    Serial.println("LED on");
+    digitalWrite(Close, LOW);
+
+    delay(1000);
+
+    digitalWrite(Open, LOW);
+    digitalWrite(sensing, LOW);
+    digitalWrite(Close, HIGH);
+    Serial.println(" LED off");
+}
+
+void REALTIME() {
+  tmElements_t tm;
+
+  if (RTC.read(tm)) {
+    Serial.println("writing ");
+
+    Serial.println((tm.Second));
+
+    myFile = SD.open("experi.txt", FILE_WRITE);
+
+    if(myFile) {
+      Serial.println("writing na... ");
+    myFile.println("Time: ");
+    myFile.print((tm.Hour));
+    myFile.print(":");
+    myFile.print((tm.Minute));
+    myFile.print(":");
+    myFile.print((tm.Second));
+    myFile.print("Day(DMY): ");
+    myFile.print(tm.Day);
+    myFile.print("/");
+    myFile.print(tm.Month);
+    
+    myFile.close();
+
+    Serial.println("done");
+  }
+
+   else{
+      Serial.println("SD write P...");
+   }
+  }
+  
+  else {
+    if (!RTC.chipPresent()) {
+      Serial.println("REALTIME P...");
+    }
+  }
+}
+
+void print2digits(int number) {   //originally void print2digits
+  if (number >= 0 && number < 10) {
+    Serial.write('0');
+  }
+  Serial.print(number);
+}
