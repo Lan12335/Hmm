@@ -1,0 +1,54 @@
+//TRANSMITTER
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+RF24 radio(8, 7); // CE, CSN pins
+
+const byte address[][6] = {"1Node", "2Node"};
+
+int datap;
+
+void setup() {
+  Serial.begin(9600);
+  radio.begin();
+  radio.setPALevel(RF24_PA_LOW);
+  radio.openWritingPipe(address[0]);  
+  radio.openReadingPipe(1, address[1]); 
+  radio.startListening(); 
+}
+
+void loop() {
+  if (radio.available()) {  //check if there is data to be read
+    radio.read(&datap, sizeof(datap));
+    Serial.print("Received: ");
+
+    if(datap==2) {
+    Serial.println(datap);  //if datap==2, then prints 2
+
+    radio.stopListening();
+
+    const char message[] = "message received";
+
+    bool sent = radio.write(&message, sizeof(message));  //and if datap==2, sends a message back to RF nano
+
+    if (sent) {
+      Serial.println("Message sent");
+    } 
+    
+    else {
+      Serial.println("Send failed");
+    }
+
+    delay(1000);
+      }
+
+    else{
+      datap==4;  //if datap != 2, datap will be 4 and printed as 4
+      Serial.println(datap);
+    }
+  }
+  
+  radio.startListening();
+
+}
