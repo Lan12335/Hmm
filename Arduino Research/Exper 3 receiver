@@ -1,0 +1,43 @@
+//RECEIVER
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+RF24 radio(10, 9); // CE, CSN pins
+
+const byte address[][6] = {"1Node", "2Node"};
+int datap = 2;  //datap is = to 2
+
+
+void setup() {
+  Serial.begin(9600);
+  radio.begin();
+  radio.setPALevel(RF24_PA_LOW);
+  radio.openWritingPipe(address[1]);  
+  radio.openReadingPipe(1, address[0]); 
+  radio.startListening(); 
+}
+
+void loop() {
+  if (radio.available()) {  
+    char received[32] = {0};    
+    radio.read(&received, sizeof(received));  //reads the message sent by the UNO
+    Serial.print("Received: ");
+    Serial.println(received);
+  }
+
+  radio.stopListening();
+
+  bool sent = radio.write(&datap, sizeof(datap));
+
+  if (sent) {
+    Serial.println("Message sent");
+  } 
+  
+  else {
+    Serial.println("Send failed");
+  }
+  radio.startListening();
+
+  delay(1000); 
+}
