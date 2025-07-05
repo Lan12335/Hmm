@@ -1,0 +1,43 @@
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+RF24 radio(7, 8); // CE, CSN pins
+
+const byte address[][6] = {"1Node", "2Node"};
+
+void setup() {
+  Serial.begin(9600);
+  radio.begin();
+  if(!radio.begin()) {
+    Serial.println("radio no begin");
+    while(1);
+  }
+  radio.setPALevel(RF24_PA_LOW);
+  radio.openWritingPipe(address[0]);  // This node writes to address 0
+  radio.openReadingPipe(1, address[1]); // This node reads from address 1
+  radio.startListening(); // Start listening for incoming messages
+}
+
+void loop() {
+  // Check if data is available to read
+  if (radio.available()) {
+    char received[32] = {0};
+    radio.read(&received, sizeof(received));
+    Serial.print("Received: ");
+    Serial.println(received);
+  }
+
+  // Stop listening to send a message
+  radio.stopListening();
+  const char message[] = "Hello diddy Node 1";
+  bool sent = radio.write(&message, sizeof(message));
+  if (sent) {
+    Serial.println("Message sent");
+  } else {
+    Serial.println("Send failed");
+  }
+  radio.startListening();
+
+  delay(1000); // Wait 1 second before next message
+}
