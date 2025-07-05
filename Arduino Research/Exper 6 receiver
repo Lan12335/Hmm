@@ -1,0 +1,97 @@
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+#include <Adafruit_Fingerprint.h>
+
+#if (defined(__AVR__) || defined(ESP8266)) && !defined(__AVR_ATmega2560__)
+SoftwareSerial mySerial(2, 3);
+#else
+#define mySerial Serial1
+#endif
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+RF24 radio(10, 9); // CE, CSN pins
+
+int dataf=0;
+const byte address[][6] = {"1Node", "2Node"};
+
+void setup() {
+  Serial.begin(9600);
+  finger.begin(57600); delay(5);
+  radio.begin();
+  if(!radio.begin()) {
+    Serial.println("radio no begin");
+    while(1);
+  }
+  radio.setPALevel(RF24_PA_LOW);
+  radio.openWritingPipe(address[1]);  // This node writes to address 0
+  radio.openReadingPipe(1, address[0]); // This node reads from address 1
+  radio.startListening(); // Start listening for incoming messages
+}
+
+void loop() {
+  getFingerprintID();
+  // Check if data is available to read
+  if ((radio.available())&&(dataf==2)) {
+    char received[32] = {0};
+    radio.read(&received, sizeof(received));
+    Serial.print("Received: ");
+    Serial.println(received);
+
+    radio.stopListening();
+    const char message[] = "Hello den Node 2";
+    bool sent = radio.write(&message, sizeof(message));
+    if (sent) {
+      Serial.println("Message sent");
+    } else {
+      Serial.println("Send failed");
+    }
+    radio.startListening();
+  }
+  delay(1000); // Wait 1 second before next message
+}
+
+uint8_t getFingerprintID() {
+  uint8_t p = finger.getImage();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image taken");
+      break;
+    case FINGERPRINT_NOFINGER:
+      Serial.println("No finger detected");
+      dataf=1;
+      return p;
+  }
+
+  // OK success!
+
+  p = finger.image2Tz();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image converted");
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      Serial.println("Image too messy");
+      return p;
+  }
+
+  // OK converted!
+  p = finger.fingerSearch();
+  if ((p == FINGERPRINT_OK) && (finger.fingerID==1) || (finger.fingerID==2) || (finger.fingerID==3)) {
+    Serial.println("Found a print match!");
+    dataf=2;
+  }
+  else if((p == FINGERPRINT_OK) && (finger.fingerID==69) || (finger.fingerID==96)) {
+    Serial.print("kupal kayong dalawa");
+    dataf=2;
+  }
+   else if (p == FINGERPRINT_NOTFOUND) {
+    Serial.println("Did not find a match");
+    dataf=3;
+    return p;
+  }
+
+  // found a match!
+  Serial.print("Found ID #"); Serial.print(finger.fingerID); Serial.print("\n");
+  return finger.fingerID;
+}
