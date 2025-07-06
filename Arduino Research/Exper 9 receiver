@@ -1,3 +1,86 @@
+#include <SPI.h>
+#include <RF24.h>
+#include <nRF24L01.h>
+#include <Wire.h>
+#include <Servo.h>
+#include <Adafruit_Fingerprint.h>
+
+#if (defined(__AVR__) || defined(ESP8266)) && !defined(__AVR_ATmega2560__)
+SoftwareSerial mySerial(2, 3);
+#else
+#define mySerial Serial1
+#endif
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+Servo S1;
+Servo S2;
+Servo S3;
+
+int FS[3];
+
+byte dataf=0;
+
+RF24 radio(9,10);
+
+const byte address[][6] = {"1Node", "2Node"};
+
+void setup() {
+  S1.attach(4,2500,500);
+  S2.attach(5,2500,500);
+  S3.attach(6,2500,500);
+
+  if(radio.begin()) {
+    Serial.println("Radio good");
+
+    radio.setPALevel(RF24_PA_LOW);
+    radio.openWritingPipe(address[1]);
+    radio.openReadingPipe(1,address[0]);
+  }
+
+  if(!radio.begin()) {
+    Serial.println("Radio no begin");
+    while(1);
+  }
+}
+
+void loop() {
+  getFingerprintID();
+
+  if(dataf==2) {
+  SENDREC();
+  
+  SWRITE();
+  }
+}
+
+void SENDREC() {
+  radio.startListening();
+  
+  if (radio.available()) {
+  radio.read(&FS, sizeof(FS));
+  Serial.println("read");
+  }
+
+  else if(!radio.available()){
+    Serial.println("1 transmitter off");
+    Serial.println("2 dataf!=2");
+  }
+  
+  radio.stopListening();
+  radio.write(&dataf,sizeof(dataf));
+}
+
+void SWRITE() {
+  Serial.println(FS[0]);
+  Serial.println(FS[1]);
+  Serial.println(FS[2]);
+
+  delay(50);
+  S1.write(FS[0]);
+  S2.write(FS[1]);
+  S3.write(FS[2]);
+}
+
 uint8_t getFingerprintID() {
   uint8_t p = finger.getImage();
   switch (p) {
