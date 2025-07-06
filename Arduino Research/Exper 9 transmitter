@@ -13,6 +13,7 @@
 int F1;
 int F2;
 int F3;
+int FS[3];
 
 File myFile;
 
@@ -90,13 +91,19 @@ void SDop() {
 }
 
 void loop() {
-  F1=analogRead(A0);
-  F2=analogRead(A1);
-  F3=analogRead(A2);
+  FS[0]=map(analogRead(A0)), 0, 1023, 0, 90);
+  FS[1]=map(analogRead(A1)), 0, 1023, 0, 90);
+  FS[2]=map(analogRead(A2)), 0, 1023, 0, 90);
 
-  RTCFSSD();
+  if(F1>10||F2>10||F3>10) {
+    RTCFSSD();
+  
+    Send();
+  }
 
-  Sending 
+  else{
+    Serial.println("no movement");
+  }
 }
 
 void RTCFSSD() {
@@ -123,11 +130,11 @@ void RTCFSSD() {
       myFile.print(tm.Month);
 
       myFile.print(" pos: ");
-      myFile.print(F1);
+      myFile.print(FS[0]);
       myFile.print(",");
-      myFile.print(F2);
+      myFile.print(FS[1]);
       myFile.print(",");
-      myFile.print(F3);
+      myFile.print(FS[2]);
 
       myFile.close();
 
@@ -140,6 +147,28 @@ void RTCFSSD() {
   }
 }
 
+void Send() {
+  NRF24act();
+  radio.startListening();
+
+  if(radio.available) {
+    int datap=0;
+    radio.read(&datap, sizeof(datap));
+    Serial.println("datap: ");
+    Serial.println(datap);
+
+    if(datap==2) {
+      radio.stopListening();
+      radio.write(&FS, sizeof(FS));
+      Serial.println("sending");
+    }
+
+    else if(datap != 2) {
+      Serial.println("not authorized PK");
+    }
+  }
+  NRF24dea();
+}
 void SDact() {
   delay(100);
   digitalWrite(NrfCS, HIGH);
