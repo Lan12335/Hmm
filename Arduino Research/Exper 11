@@ -1,0 +1,99 @@
+#include <SD.h>
+#include <RF24.h>
+#include <SPI.h>
+#include <Wire.h>
+#include <DS1307RTC.h>
+#include <Time.h>
+
+#define SDPower 3  // Arduino pin controlling MOSFET gate for SD card power
+#define NrfCS 7
+#define SdCS 10
+
+RF24 radio(8, NrfCS); // CE, CSN pins
+
+void setup() {
+  Serial.begin(9600);
+
+  pinMode(SDPower, OUTPUT);
+  pinMode(NrfCS, OUTPUT);
+  pinMode(SdCS, OUTPUT); 
+  
+  digitalWrite(SDPower, HIGH); // Start with SD card power OFF (MOSFET gate HIGH)
+  digitalWrite(NrfCS, HIGH);
+  digitalWrite(SdCS, HIGH);
+
+  NRF24();
+  SDop();
+}
+
+void NRF24() {
+  NRF24act();
+  if(radio.begin()) {
+    Serial.println("radio good");
+  }
+  if(!radio.begin()) {
+    Serial.println("radio no good");
+  }
+  NRF24dea();
+}
+
+void SDop() {
+  SDact();
+  if(SD.begin(10)) {
+    Serial.println("SD good");
+  }
+
+  else if(!SD.begin(10)) {
+    Serial.println("SD no good");
+  }
+}
+
+void loop() {
+  RTCFSSD();
+  delay(1000);
+}
+
+void SDact() {
+  delay(100);
+  digitalWrite(NrfCS, HIGH);
+  digitalWrite(SDPower, LOW);
+  digitalWrite(SdCS, LOW);
+}
+
+void SDdea() {
+  delay(100);
+  digitalWrite(NrfCS, HIGH);
+  digitalWrite(SDPower, HIGH);
+  digitalWrite(SdCS, HIGH);
+}
+
+void NRF24act() {
+  delay(100);
+  digitalWrite(SDPower, HIGH);
+  digitalWrite(SdCS, HIGH);
+  digitalWrite(NrfCS, LOW);
+}
+
+void NRF24dea() {
+  delay(100);
+  digitalWrite(SDPower, HIGH);
+  digitalWrite(SdCS, HIGH);
+  digitalWrite(NrfCS, HIGH);
+}
+
+void RTCFSSD() {
+  tmElements_t tm;
+
+  if(RTC.read(tm)) {
+    Serial.print("OK, Time: ");
+    Serial.print(tm.Second);
+    Serial.print("/");
+    Serial.print(tm.Minute);
+    Serial.print("/");
+    Serial.print(tm.Hour);
+    Serial.print("/");
+    Serial.print(tm.Day);
+    Serial.print("/");
+    Serial.println(tm.Month);
+  }
+}
