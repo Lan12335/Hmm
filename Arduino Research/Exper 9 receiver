@@ -17,17 +17,24 @@ Servo S2;
 Servo S3;
 
 int FS[3];
+int pos1;
+int pos2;
+int pos3;
 
 byte dataf=0;
 
-RF24 radio(9,10);
+RF24 radio(10,9);
 
 const byte address[][6] = {"1Node", "2Node"};
 
 void setup() {
+  Serial.begin(9600);
+  
   S1.attach(4,2500,500);
   S2.attach(5,2500,500);
   S3.attach(6,2500,500);
+
+  finger.begin(57600);
 
   if(radio.begin()) {
     Serial.println("Radio good");
@@ -44,41 +51,44 @@ void setup() {
 }
 
 void loop() {
+
   getFingerprintID();
 
   if(dataf==2) {
-  SENDREC();
+    SENDREC();
   
-  SWRITE();
+    SWRITE();
   }
+  delay(1000);
 }
 
 void SENDREC() {
-  radio.startListening();
+  radio.stopListening();
   
+  radio.write(&dataf,sizeof(dataf));
+
+  radio.startListening();
+  delay(1000);
+
   if (radio.available()) {
   radio.read(&FS, sizeof(FS));
   Serial.println("read");
   }
-
-  else if(!radio.available()){
-    Serial.println("1 transmitter off");
-    Serial.println("2 dataf!=2");
-  }
-  
-  radio.stopListening();
-  radio.write(&dataf,sizeof(dataf));
 }
 
 void SWRITE() {
-  Serial.println(FS[0]);
-  Serial.println(FS[1]);
-  Serial.println(FS[2]);
+  pos1 = map(FS[0],0,1023,0,90);
+  pos2 = map(FS[1],0,1023,0,90);
+  pos3 = map(FS[2],0,1023,0,90);
+
+  Serial.println(pos1);
+  Serial.println(pos2);
+  Serial.println(pos3);
 
   delay(50);
-  S1.write(FS[0]);
-  S2.write(FS[1]);
-  S3.write(FS[2]);
+  S1.write(pos1);
+  S2.write(pos2);
+  S3.write(pos3);
 }
 
 uint8_t getFingerprintID() {
