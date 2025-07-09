@@ -27,6 +27,9 @@ void setup() {
   pinMode(SDPower, OUTPUT);
   pinMode(NrfCS, OUTPUT);
   pinMode(SdCS, OUTPUT); 
+  pinMode(4, OUTPUT); 
+  pinMode(5, OUTPUT); 
+  pinMode(6, OUTPUT); 
   
   digitalWrite(SDPower, HIGH); // Start with SD card power OFF (MOSFET gate HIGH)
   digitalWrite(NrfCS, HIGH);
@@ -84,6 +87,10 @@ void SDop() {
 }
 
 void loop() {
+  digitalWrite(4, LOW);
+  digitalWrite(5, LOW);
+  digitalWrite(6, LOW);
+
   FS[0]=analogRead(A0);
   FS[1]=analogRead(A1);
   FS[2]=analogRead(A2);
@@ -91,14 +98,18 @@ void loop() {
   Serial.println(FS[0]);
   Serial.println(FS[1]);
   Serial.println(FS[2]);
-  if(F1>10||F2>10||F3>10) {
+
+  if(FS[0]>10||FS[1]>10||FS[2]>10) {
+    digitalWrite(6, HIGH);
+
     RTCFSSD();
   
     Send();
   }
 
-  else{
+  else if((FS[0]<10||FS[1]<10||FS[2]<10)){
     Serial.println("no movement");
+    digitalWrite(6, LOW);
   }
   delay(1000);
 }
@@ -107,37 +118,18 @@ void RTCFSSD() {
   tmElements_t tm;
 
   if(RTC.read(tm)) {
-    Serial.println("Writing...");
-    Serial.println(tm.Second);
-
-    myFile = SD.open("experi.txt", FILE_WRITE);
-
-    if(myFile) {
-      Serial.println("Writing na po");
-
-      myFile.println("Time: ");
-      myFile.print((tm.Hour));
-      myFile.print(":");
-      myFile.print((tm.Minute));
-      myFile.print(":");
-      myFile.print((tm.Second));
-      myFile.print("Day(DMY): ");
-      myFile.print(tm.Day);
-      myFile.print("/");
-      myFile.print(tm.Month);
-
-      myFile.print(" pos: ");
-      myFile.print(FS[0]);
-      myFile.print(",");
-      myFile.print(FS[1]);
-      myFile.print(",");
-      myFile.print(FS[2]);
-
-      myFile.close();
-
-      Serial.println("Done");
+    Serial.print("OK, Time: ");
+    Serial.print(tm.Second);
+    Serial.print("/");
+    Serial.print(tm.Minute);
+    Serial.print("/");
+    Serial.print(tm.Hour);
+    Serial.print("/");
+    Serial.print(tm.Day);
+    Serial.print("/");
+    Serial.println(tm.Month);
+    digitalWrite(4, HIGH);
     }
-  }
 
   else{
     Serial.println("error in RTCFSSD");
@@ -158,6 +150,7 @@ void Send() {
       radio.stopListening();
       radio.write(&FS, sizeof(FS));
       Serial.println("sending");
+      digitalWrite(6, HIGH);
     }
 
     else if(datap != 2) {
