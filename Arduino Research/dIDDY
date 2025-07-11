@@ -26,13 +26,14 @@ const byte addresses[][6] = {"00001", "00002"};
 //Ff123 is the force sensors and are connected to A012
 int FS[3];
 
-#define Close 4
-#define Open 5 
-#define sensing 6  
+#define Close 6
+#define Open 4
+#define sensing 5  
+int F1;
+int F2;
+int F3;
 
-byte data=0;  //data packet to be received from the LGT RF nano, must be ==1
-
-byte intru;
+byte intru=0;
 byte key=0;
 
 void setup() {
@@ -59,7 +60,7 @@ void NRFinit() {
   nact();
   if(radio.begin()) {
     Serial.println("Radio G...");
-    radio.setPALevel(RF24_PA_MAX);
+    radio.setPALevel(RF24_PA_MIN);
     radio.setDataRate(RF24_250KBPS);
     radio.openWritingPipe(addresses[1]);
     radio.openReadingPipe(1, addresses[0]);
@@ -103,6 +104,8 @@ void SDinit() {
       myFile.print(",");
       myFile.print("3");
       myFile.print(",");
+      myFile.print("Intru");
+      myFile.print(",");
 
       myFile.close();
     }
@@ -119,67 +122,35 @@ void SDinit() {
 }
 
 void loop() {
-  FS[0] = analogRead(A0);
-  FS[1] = analogRead(A1);
-  FS[2] = analogRead(A2);
+  F1 = analogRead(A0);
+  F2 = analogRead(A1);
+  F3 = analogRead(A2);
 
-  if((FS[0]>10) || (FS[1]>10) || (FS[2]>10)) {
-    REALTIME();
-  }
+  Serial.println(F1);
+  Serial.println(F2);
+  Serial.println(F3);
 
-  if((F1>=O) || (F2>=O) || (F3>=O)) {  //if FS are giving values, then LED loghts up
-    digitalWrite(sensing, HIGH);
-    Serial.println("Sensing");
-  }
-
-  else if((F1<O) || (F2<O) || (F3<O)) {  //FS are not giving values, then LED is off
-    digitalWrite(sensing, LOW);
-  }
-  
-  REALTIME();  //includes RTC
-
+  nact();
   radio.startListening();
+  if((F1>10) || (F2>10) || (F2>10) && (radio.available())) {
+    TIME();
 
-  if(radio.available()) {  //opening the door with wallet
-    radio.read(&data,sizeof(data));  //if this does not work we can try to make it so that if(radio.available()) {data==1; }
+    recsen();
 
-    Serial.println("please insert key you have 10 sec");
-    delay(10000);  //time to insert key
+    v12345();
 
-    while((F1>=O) && (F2>=O) && (F3>=O)) {  
-      opening();
-
-      if(!radio.available() && (F1<=O) && (F2<=O) && (F3<=O)) {  //if nawala ung wallet and walang key
-        break;
-      }
-    }
-
-    if((F1<=O) && (F2<=O) && (F3<=O)){  //sends POS[3] if FS does not give input and RA
-      DS();
+    if(key>0) {
+        opening();
     }
   }
 
-  else if(!radio.available()) {
-    while((F1>=O) && (F2>=O) && (F3>=O)){  //while F123 are giving inputs meaning a key
-      PIopen();
+  else if((F1>10) || (F2>10) || (F2>10) && (!radio.available())) {
+    v12345();
 
-      if((F1<=O) || (F2<=O) || (F3<=O)) {  //if one FS gets<100 it breaks
-        break;
-      }
-    }
-
-    while((F1>=O) || (F2>=O) || (F3>=O)){  //while F123 are giving inputs independently meaning picklocks
-      v12345();
-
-      if((F1<=O) && (F2<=O) && (F3<=O)) {  //if all FS are down, it breaks
-        break;
-      }
+    if(key>0) {
+        opening();
     }
   }
-
-  SDwrite();
-
-  delay(1000);
 }
 
 void nact() {
@@ -211,23 +182,27 @@ void TIME () {
     myFile = SD.open("experi.csv", FILE_WRITE);
 
     if(myFile) {
-      myFile.print("Time: ");
       myFile.print(tm.Second);
       myFile.print(",");
       myFile.print(tm.Minute);
       myFile.print(",");
       myFile.print(tm.Hour);
-      myFile.print("Day(DMY): ");
+      myFile.print(",");
       myFile.print(tm.Day);
       myFile.print(",");
       myFile.print(tm.Month);
       myFile.print(",");
-      myFile.print(FS[0]);
+      myFile.print(F1);
       myFile.print(",");
-      myFile.print(FS[1]);
+      myFile.print(F2);
       myFile.print(",");
-      myFile.print(FS[2]);
+      myFile.print(F3);
       myFile.print(",");
+
+      if(intru>0) {
+        myFile.print(intru);
+        myFile.print(",");
+      }
 
       myFile.close();
     }
@@ -241,7 +216,76 @@ void TIME () {
   else {
     if (!RTC.chipPresent()) {
       Serial.println("REALTIME P...");
+      while(1);
     }
+  }
+}
+
+void recsen() {
+    nact();
+
+    radio.startListening();
+    if(radio.available()) {
+        Serial.println("receiving");
+        dataf=0;
+        radio.read(&dataf, sizeof(dataf));
+
+        while(dataf!=2) {
+            Serial.println("wrong authorization");
+            if(dataf==2) {
+                break;
+            }
+        }
+
+        if(dataf==2) {
+            radio.stopListening();
+            Serial.println("sending");
+            radio.write(&FS, sizeof(FS));
+        }
+    }
+}
+
+void v12345() {
+  //The probability will increase as the number of if statements in this method increases, current probability is 1/5
+
+  if((F1>1000) || (F2>100) || (F3>300)) {
+    FS[0] = 13;  //-3 =10
+    FS[1] = 40;  //-10 =30
+    FS[2] = 34;  //-4 =30
+
+    key=1;
+  }
+  
+  else if((F1>100) || (F2>1000) || (F3>500)) {
+    FS[0] = 74;  //-14 =60
+    FS[1] = 12;  //+8 =20
+    FS[2] = 53;  //-3 =50
+
+    key=2;
+  }
+  
+  else if((F1>300) || (F2>300) || (F3>100)) {
+    FS[0] = 64;  //-4 =60
+    FS[1] = 80;  //-10 =70
+    FS[2] = 46;  //-6 =40
+
+    key=3;
+  }
+  
+  else if((F1>200) || (F2>200) || (F3>1000)) {
+    FS[0] = 40;
+    FS[1] = 30;
+    FS[2] = 25;
+
+    key=4;
+  }
+  
+  else if((F1>400) || (F2>500) || (F3>200)) {
+    FS[0] = 90; //-10 =80
+    FS[1] = 80; //+10 =90
+    FS[2] = 100; //-30 =70
+
+    key=5;
   }
 }
 
@@ -251,179 +295,62 @@ void opening() {
   //IF key is equal to either 12345 it opens, otherwise by default close
   switch(key) { 
     case 1:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+    if((F1>1000) && (F2>100) && (F3>300) && (dataf==2)) {
     digitalWrite(Close, LOW);
     digitalWrite(Open, HIGH);
+    if(dataf!=2) {
+        intru=1;
+    }
     }
     break;
 
     case 2:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+    if((F1>100) && (F2>1000) && (F3>500) && (dataf==2)) {
     digitalWrite(Close, LOW);
     digitalWrite(Open, HIGH);
+    if(dataf!=2) {
+        intru=2;
+    }
     }
     break;
 
     case 3:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+    if((F1>300) && (F2>300) && (F3>100) && (dataf==2)) {
     digitalWrite(Close, LOW);
     digitalWrite(Open, HIGH);
+    if(dataf!=2) {
+        intru=3;
+    }
     }
     break;
 
     case 4:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+    if((F1>200) && (F2>200) && (F3>1000) && (dataf==2)) {
     digitalWrite(Close, LOW);
     digitalWrite(Open, HIGH);
+    if(dataf!=2) {
+        intru=4;
+    }
     }
     break;
 
     case 5:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
+    if((F1>400) && (F2>500) && (F3>200) && (dataf==2)) {
     digitalWrite(Close, LOW);
     digitalWrite(Open, HIGH);
+    if(dataf!=2) {
+        intru=5;
+    }
     }
     break;
 
     default:
     digitalWrite(Close, HIGH);
     digitalWrite(Open, LOW);
+    if(dataf!=2) {
+        intru=def;
+    }
     break;
   }
   
-}
-
-void PIopen() {
-  switch (key) {
-    case 1:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
-      digitalWrite(Close, LOW);
-      digitalWrite(Open, HIGH);
-      intru = 1;
-    }
-    break;
-
-    case 2:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
-      digitalWrite(Close, LOW);
-      digitalWrite(Open, HIGH);
-      intru = 2;
-    }
-    break;
-
-    case 3:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
-      digitalWrite(Close, LOW);
-      digitalWrite(Open, HIGH);
-      intru = 3;
-    }
-    break;
-
-    case 4:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
-      digitalWrite(Close, LOW);
-      digitalWrite(Open, HIGH);
-      intru = 4;
-    }
-    break;
-
-    case 5:
-    if((F1>=pos1) && (F2>=pos2) && (F3>=pos3)) {
-      digitalWrite(Close, LOW);
-      digitalWrite(Open, HIGH);
-      intru = 5;
-    }
-    break;
-
-    default:
-      digitalWrite(Close, HIGH);
-      digitalWrite(Open, LOW);
-    break;
-  }
-}
-
-void v12345() {
-  //any value that will make so that when F123 is x then pos123 will be x, and when pos123=x and F123=x open will be HIGH
-  //10,20,30,40 are degrees in servo
-  //The probability will increase as the number of if statements in this method increases, current probability is 1/5
-
-  if((F1>=O) || (F2>=O) || (F3>=O)) {
-    pos1=10; 
-    pos2=20; 
-    pos3=30; 
-
-    key=1;
-  }
-  
-  else if((F1>=T) || (F2>=T) || (F3>=T)) {
-    pos1=10;
-    pos2=30;
-    pos3=20;
-
-    key=2;
-  }
-  
-  else if((F1>=Th) || (F2>=Th) || (F3>=Th)) {
-    pos1=20;
-    pos2=30;
-    pos3=10;
-
-    key=3;
-  }
-  
-  else if((F1>=F) || (F2>=F) || (F3>=F)) {
-    pos1=30;
-    pos2=20;
-    pos3=10;
-
-    key=4;
-  }
-  
-  else if((F1>=Fi) || (F2>=Fi) || (F3>=Fi)) {
-    pos1=40;
-    pos2=10;
-    pos3=20;
-
-    key=5;
-  }
-}
-
-//data sending pos
-void DS() {
-  if(data==1) {
-    Serial.println("DS G...");
-    radio.stopListening();
-    radio.write(&POS, sizeof(POS));
-    POS[0]=pos1; 
-    POS[1]=pos2;
-    POS[2]=pos3;
-    Serial.print("sent");
-  }
-
-  else{
-    Serial.print("wrong data value received... ");
-    Serial.print("radio unnavailable... ");
-    Serial.print("error in DS... ");
-  }
-}
-
-void SDwrite() {
-  if(myFile) {
-    myFile = SD.open("rsrch.txt", FILE_WRITE);
-
-    myFile.print("rsrch.txt(1,2,3): ");    
-    myFile.print(POS[0]);
-    myFile.print(",");
-    myFile.print(POS[1]);
-    myFile.print(",");
-    myFile.print(POS[2]);
-
-    myFile.print(" PI: ");
-    myFile.print(intru);
-
-    myFile.close();
-  }
-  else {
-    Serial.println("SDwrite P...");
-  }
 }
