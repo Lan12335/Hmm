@@ -1,0 +1,230 @@
+/*
+Created by: Orgel, Lanze Jayzee F.
+Last date edited: July 28, 2025
+
+Materials:
+RF-Nano
+AS608 fingerprint scanner
+Micro Servo Motors
+LED (optional)
+Battery (5.6V)
+
+*****PIN CONNECTIONS*****
+AS608
+GND-GND
+VCC-3.3V
+TX Yellow wire-2
+RX White wire-3
+
+SERVO
+GND-GND
+VCC-5~6V  deppending on reccomended
+S1 PWM-4
+S2 PWM-5
+S3 PWM-6
+
+nRF24L01
+CE-10
+CSN-9
+
+***before using the AS608 fingerprint scanner on this code, 
+please do enroll fingerprints first and use the number ID's 1,2,3,69, or 96
+*/
+
+#include <Adafruit_Fingerprint.h>
+#include <Servo.h>
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+
+#if (defined(__AVR__) || defined(ESP8266)) && !defined(__AVR_ATmega2560__)
+SoftwareSerial mySerial(2, 3);
+#else
+#define mySerial Serial1
+#endif
+Adafruit_Fingerprint finger = Adafruit_Fingerprint(&mySerial);
+
+Servo S1;
+Servo S2;
+Servo S3;
+
+byte counter=7;
+byte key=0;
+int dataf;
+
+RF24 radio(10,9);
+const byte addresses[][6] = {"00001", "00002"};
+
+void setup() {
+  Serial.begin(9600);
+
+  //AS608 fingerprint scanner initialization
+  finger.begin(57600); 
+  delay(50);
+
+  radioinit();
+
+  S1.attach(6, 500, 2500);  
+  S2.attach(5, 500, 2500);
+  S3.attach(4, 500, 2500);
+}
+
+//RF-nano radio initialization
+void radioinit() {
+  if(radio.begin()) {
+    Serial.println("radio G...");
+    radio.setPALevel(RF24_PA_MIN);
+    radio.setDataRate(RF24_250KBPS);
+    radio.openWritingPipe(addresses[0]);
+    radio.openReadingPipe(1, addresses[1]);
+    radio.setChannel(90);
+  }
+
+  else if(!radio.begin()) {
+    Serial.println("Radio P...");
+    while(1);
+  }
+  
+}
+
+void loop() {
+  dataf = 0;
+
+  getFingerprintID();  //all about the fingerprint, it will output dataf for fingerprint ID
+
+  Serial.print("dataf: "); 
+  Serial.print(dataf); 
+  Serial.println("\n");
+
+  while(dataf==2) {
+    while(counter < 7) {
+        send();  //send datap=2 to doorknob 7 times
+        counter++;
+      }
+
+    radio.startListening();
+  
+    if(radio.available()) {
+        Serial.println("Receiving key...");
+        radio.read(&key, sizeof(key));
+        Serial.println(key);
+    }
+
+    delay(1000);
+  }
+  
+  if(key>0) {
+      Served();
+      Serial.println("Servo M...");
+  }
+  delay(1000);         
+}
+
+uint8_t getFingerprintID() {
+  uint8_t p = finger.getImage();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image taken");
+      break;
+    case FINGERPRINT_NOFINGER:
+      Serial.println("No finger detected");
+      dataf=1;
+      return p;
+  }
+
+  //read
+  p = finger.image2Tz();
+  switch (p) {
+    case FINGERPRINT_OK:
+      Serial.println("Image converted");
+      break;
+    case FINGERPRINT_IMAGEMESS:
+      Serial.println("Image too messy");
+      return p;
+  }
+
+  //converts
+  p = finger.fingerSearch();
+  if ((p == FINGERPRINT_OK) && (finger.fingerID==1) || (finger.fingerID==2) || (finger.fingerID==3)) {
+    Serial.println("Found a print match!");
+    digitalWrite(12, HIGH);
+    dataf=2;
+  }
+
+  else if((p == FINGERPRINT_OK) && (finger.fingerID==69) || (finger.fingerID==96)) {
+    Serial.print("hahaha");
+    digitalWrite(12, HIGH);
+    dataf=2;
+  }
+
+   else if (p == FINGERPRINT_NOTFOUND) {
+    Serial.println("Did not find a match");
+    dataf=3;
+    return p;
+  }
+
+  // found a match!
+  Serial.print("Found ID #"); 
+  Serial.print(finger.fingerID); 
+  Serial.println("\n");
+  
+  return finger.fingerID;
+}
+
+//method for sending datap 
+void send() {
+  radio.stopListening();
+  const byte datap = 2;
+  bool sent = radio.write(&datap, sizeof(datap));
+  if (sent) {
+    Serial.println("datap sent");
+  } 
+  
+  else {
+    Serial.println("Send failed");
+  }
+}
+
+/*
+method that writes for the micro servo motors
+numbers under cases may be changed depending on the "key" factors on the doorknob,
+cases can also be added as well as lessened
+*/
+void Served() {
+  switch (key) {
+      case 1:
+      S1.write(10);
+      S2.write(30);
+      S3.write(30);
+      Serial.println("writing 1");
+      break;
+
+      case 2:
+      S1.write(60);
+      S2.write(20);
+      S3.write(50);
+      Serial.println("writing 2");
+      break;
+
+      case 3:
+      S1.write(60);
+      S2.write(70);
+      S3.write(40);
+      Serial.println("writing 3");
+      break;
+
+      case 4:
+      S1.write(40);
+      S2.write(30);
+      S3.write(25);
+      Serial.println("writing 4");
+      break;
+
+      case 5:
+      S1.write(90);
+      S2.write(80);
+      S3.write(100);
+      Serial.println("writing 5");
+      break;
+  }
+}
